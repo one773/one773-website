@@ -1,1 +1,4 @@
 guidelines/
+node_modules/
+README.md
+dist/

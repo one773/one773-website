@@ -183,7 +183,7 @@ const RESOURCES: Resource[] = [
   { icon: Database, name: "one773-storage", type: "Storage Account", status: "degraded" },
 ]
 
-const SKILLS = ["Azure", "TypeScript", "React", "Go", "Python", "Postgres", "Terraform", "Linux"]
+const SKILLS = ["Azure (Entra ID)", "Active Directory", "Windows Server", "Linux", "VMware", "Cisco", "SQL", "ServiceNow", "ITIL"]
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -781,21 +781,22 @@ export default function App() {
               <section id="about" className="pt-20 pb-16">
                 <p className="text-[11px] font-mono text-[#2f81f7] uppercase tracking-widest mb-5">one773.site</p>
                 <h1 className="text-5xl lg:text-6xl font-semibold text-[#e6edf3] mb-3 leading-tight">
-                  Alex Mercer
+                  Alex
                 </h1>
                 <p className="text-base font-mono text-[#8b949e] mb-8">
-                  Software Engineer · Azure Platform · TypeScript
+                  IT Support &amp; Infrastructure Engineer · Azure · Entra ID
                 </p>
 
                 <div className="max-w-xl mb-8 space-y-3">
                   <p className="text-base text-[#c9d1d9] leading-relaxed">
-                    I build cloud infrastructure and developer tooling — the systems that let product teams ship fast without
-                    thinking about the platform underneath. Most of my work lives at the intersection of Azure, TypeScript,
-                    and Go.
+                    I'm a Technical Support and Infrastructure Engineer with hands-on experience resolving complex L2/L3
+                    incidents and administering identities across large multinational, hybrid environments. My focus is
+                    authentication flows, advanced network diagnostics, and ITIL-driven operations.
                   </p>
                   <p className="text-base text-[#8b949e] leading-relaxed">
-                    This site is itself a live system: the metrics below are real, the GitHub graph is current, and the
-                    whole stack is open source.
+                    I'm working toward Cloud, SecOps &amp; DevOps roles, with a strong emphasis on reducing risk across critical
+                    infrastructure and keeping industrial and enterprise platforms highly available. This site is itself
+                    a live system: the metrics below are real, the GitHub graph is current.
                   </p>
                 </div>
 
