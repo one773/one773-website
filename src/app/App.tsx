@@ -926,7 +926,7 @@ export default function App() {
                 <Github size={16} />
               </a>
               <a
-                href="https://twitter.com/one773"
+                href="https://twitter.com/_one773"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#8b949e] hover:text-[#e6edf3] transition-colors"
@@ -934,7 +934,7 @@ export default function App() {
                 <Twitter size={16} />
               </a>
               <a
-                href="https://linkedin.com/in/one773"
+                href="https://linkedin.com/in/alexandar-toshev-30a404227"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#8b949e] hover:text-[#e6edf3] transition-colors"
