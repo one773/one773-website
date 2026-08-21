@@ -477,34 +477,45 @@ function BlogPostCard({ post, onClick }: { post: BlogPost; onClick: () => void }
 
 // ─── ContributionGrid ─────────────────────────────────────────────────────────
 
-function ContributionGrid() {
-  const grid = useMemo(() => {
-    const g: number[][] = []
-    for (let w = 0; w < 52; w++) {
-      const week: number[] = []
-      for (let d = 0; d < 7; d++) {
-        const n = Math.floor(Math.abs(Math.sin(w * 7 + d + 1) * 10000)) % 100
-        week.push(n < 28 ? 0 : n < 50 ? 1 : n < 72 ? 3 : n < 88 ? 6 : 12)
-      }
-      g.push(week)
-    }
-    return g
-  }, [])
+interface ContributionDay {
+  date: string
+  count: number
+}
 
-  const levels = [0, 1, 3, 6, 12]
-  const opacities = [0.04, 0.2, 0.45, 0.7, 1]
-  const opacityFor = (v: number) => {
-    const idx = levels.indexOf(v)
-    return idx >= 0 ? opacities[idx] : 0.04
+function ContributionGrid({ weeks }: { weeks: ContributionDay[][] }) {
+  // Real intensity levels come from GitHub's own contribution counts, not a
+  // fixed palette — bucket into 5 tiers the same way GitHub's UI does.
+  const opacityFor = (count: number) => {
+    if (count === 0) return 0.04
+    if (count <= 2) return 0.2
+    if (count <= 5) return 0.45
+    if (count <= 9) return 0.7
+    return 1
   }
 
-  const months = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"]
+  // Month labels are computed from each week's actual first day, placed only
+  // where a new month genuinely begins — instead of a fixed 12-label row.
+  const monthLabels = useMemo(() => {
+    const labels: string[] = []
+    let lastMonth = -1
+    for (const week of weeks) {
+      const firstDay = week[0]
+      const month = firstDay ? new Date(firstDay.date).getMonth() : -1
+      if (month !== lastMonth && firstDay) {
+        labels.push(new Date(firstDay.date).toLocaleDateString("en-US", { month: "short" }))
+        lastMonth = month
+      } else {
+        labels.push("")
+      }
+    }
+    return labels
+  }, [weeks])
 
   return (
     <div className="overflow-x-auto">
       <div className="flex gap-[3px] mb-1 pl-[22px]">
-        {months.map((m, i) => (
-          <span key={i} className="text-[10px] font-mono text-[#0e6ba8]" style={{ width: "52px" }}>
+        {monthLabels.map((m, i) => (
+          <span key={i} className="text-[10px] font-mono text-[#0e6ba8]" style={{ width: "13px" }}>
             {m}
           </span>
         ))}
@@ -517,13 +528,14 @@ function ContributionGrid() {
             </span>
           ))}
         </div>
-        {grid.map((week, wi) => (
+        {weeks.map((week, wi) => (
           <div key={wi} className="flex flex-col gap-[3px]">
-            {week.map((val, di) => (
+            {week.map((day, di) => (
               <div
                 key={di}
                 className="w-[10px] h-[10px] rounded-sm"
-                style={{ backgroundColor: `rgba(47, 129, 247, ${opacityFor(val)})` }}
+                title={`${day.count} contribution${day.count === 1 ? "" : "s"} on ${day.date}`}
+                style={{ backgroundColor: `rgba(14, 107, 168, ${opacityFor(day.count)})` }}
               />
             ))}
           </div>
@@ -531,11 +543,11 @@ function ContributionGrid() {
       </div>
       <div className="flex items-center gap-1.5 mt-3 justify-end">
         <span className="text-[10px] font-mono text-[#0e6ba8]">Less</span>
-        {levels.map((v) => (
+        {[0, 1, 4, 8, 12].map((v) => (
           <div
             key={v}
             className="w-[10px] h-[10px] rounded-sm"
-            style={{ backgroundColor: `rgba(47, 129, 247, ${opacityFor(v)})` }}
+            style={{ backgroundColor: `rgba(14, 107, 168, ${opacityFor(v)})` }}
           />
         ))}
         <span className="text-[10px] font-mono text-[#0e6ba8]">More</span>
@@ -872,7 +884,7 @@ function useGithubActivity() {
 
     async function load() {
       try {
-        const res = await fetch("/api/github-activity")
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/github-activity`)
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
         const data: Commit[] = await res.json()
         if (!cancelled) {
@@ -895,9 +907,47 @@ function useGithubActivity() {
   return { commits, loading, error }
 }
 
+// ─── useContributionCalendar ────────────────────────────────────────────────
+
+function useContributionCalendar() {
+  const [weeks, setWeeks] = useState<ContributionDay[][]>([])
+  const [total, setTotal] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/github-contributions`)
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+        const data: { totalContributions: number; weeks: ContributionDay[][] } = await res.json()
+        if (!cancelled) {
+          setWeeks(data.weeks)
+          setTotal(data.totalContributions)
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load contributions")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { weeks, total, loading, error }
+}
+
 export default function App() {
   const navigate = useNavigate()
   const { commits, loading: commitsLoading, error: commitsError } = useGithubActivity()
+  const { weeks: contribWeeks, total: contribTotal, loading: contribLoading, error: contribError } = useContributionCalendar()
   const location = useLocation()
   const [page, setPage] = useState<Page>("home")
   const [activePost, setActivePost] = useState<BlogPost | null>(null)
@@ -1073,8 +1123,18 @@ export default function App() {
                       </div>
 
                       <div className="glass-panel rounded-xl p-5 mb-4">
-                        <ContributionGrid />
-                        <p className="text-xs font-mono text-[#0e6ba8] mt-4">1,284 contributions in the last year</p>
+                        {contribLoading ? (
+                          <p className="text-xs font-mono text-[#0e6ba8]">Loading contribution history…</p>
+                        ) : contribError ? (
+                          <p className="text-xs font-mono text-[#0e6ba8]">Couldn't load contribution history right now.</p>
+                        ) : (
+                          <>
+                            <ContributionGrid weeks={contribWeeks} />
+                            <p className="text-xs font-mono text-[#0e6ba8] mt-4">
+                              {contribTotal?.toLocaleString() ?? 0} contributions in the last year
+                            </p>
+                          </>
+                        )}
                       </div>
 
                       <div className="glass-panel rounded-xl px-5 divide-y divide-[rgba(230,237,243,0.04)]">
