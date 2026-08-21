@@ -165,13 +165,8 @@ const BLOG_POSTS: BlogPost[] = [
   },
 ]
 
-const COMMITS: Commit[] = [
-  { repo: "one773/one773.site", message: "feat: add azure monitor sparklines to metric cards", time: "2h ago", added: 84, removed: 12 },
-  { repo: "one773/devmetrics", message: "fix: pr cycle time off by one on weekend boundaries", time: "8h ago", added: 23, removed: 31 },
-  { repo: "one773/one773.site", message: "chore: bump deps, tighten tsconfig strict flags", time: "1d ago", added: 6, removed: 94 },
-  { repo: "one773/devmetrics", message: "feat: cli `dm report --since 30d` output", time: "2d ago", added: 212, removed: 8 },
-  { repo: "one773/one773.site", message: "docs: blog post — wiring azure monitor into react", time: "4d ago", added: 1847, removed: 2 },
-]
+// GitHub commit activity is now fetched live from /api/github-activity
+// (see the useGithubActivity hook below) instead of hardcoded here.
 
 const METRICS: Metric[] = [
   { label: "Unique visitors", value: "1,284", unit: "24h", data: [820, 940, 780, 1100, 1050, 1320, 1284] },
@@ -863,8 +858,46 @@ function ProjectsPage({ onReadPost }: { onReadPost: (postId: string) => void }) 
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
+// ─── useGithubActivity ──────────────────────────────────────────────────────
+// Fetches real commit activity from the backend. Keeps the last successful
+// result on screen if a later refresh fails, rather than blanking the section.
+
+function useGithubActivity() {
+  const [commits, setCommits] = useState<Commit[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch("/api/github-activity")
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+        const data: Commit[] = await res.json()
+        if (!cancelled) {
+          setCommits(data)
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load activity")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { commits, loading, error }
+}
+
 export default function App() {
   const navigate = useNavigate()
+  const { commits, loading: commitsLoading, error: commitsError } = useGithubActivity()
   const location = useLocation()
   const [page, setPage] = useState<Page>("home")
   const [activePost, setActivePost] = useState<BlogPost | null>(null)
@@ -1045,9 +1078,17 @@ export default function App() {
                       </div>
 
                       <div className="glass-panel rounded-xl px-5 divide-y divide-[rgba(230,237,243,0.04)]">
-                        {COMMITS.map((commit, i) => (
-                          <CommitRow key={i} commit={commit} />
-                        ))}
+                        {commitsLoading ? (
+                          <p className="py-4 text-xs font-mono text-[#0e6ba8]">Loading recent activity…</p>
+                        ) : commitsError ? (
+                          <p className="py-4 text-xs font-mono text-[#0e6ba8]">
+                            Couldn't load recent activity right now.
+                          </p>
+                        ) : commits.length === 0 ? (
+                          <p className="py-4 text-xs font-mono text-[#0e6ba8]">No recent activity found.</p>
+                        ) : (
+                          commits.map((commit, i) => <CommitRow key={i} commit={commit} />)
+                        )}
                       </div>
                     </section>
 
